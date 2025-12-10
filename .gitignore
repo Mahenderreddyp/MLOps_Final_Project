@@ -90,8 +90,6 @@ reports/
 logs/
 output/
 
-# Local assets
-assets/
 
 # Git LFS pointers (leave actual large files untracked)
 *.lfs

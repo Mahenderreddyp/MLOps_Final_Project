@@ -52,7 +52,7 @@ Healthcare cost prediction addresses critical challenges:
 
 **Description:** De-identified hospital inpatient discharge data from New York State facilities
 
-<img src="assets/dataset_info.png" alt="SPARCS Sample Records" width="700"/>
+<img src="./assets/dataset_info.png" alt="SPARCS Sample Records" width="700"/>
 
 ### Dataset Statistics
 - **Records:** 2+ million patient discharges
