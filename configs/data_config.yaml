@@ -1,0 +1,168 @@
+# Data Configuration for Hospital Cost Prediction
+
+data_source:
+  name: "SPARCS Hospital Discharge"
+  url: "https://health.data.ny.gov/resource/sf4k-39ay.json"
+  type: "api"  # Options: api, local, azure
+  
+  # API specific settings
+  api:
+    limit: 50000
+    offset: 0
+    timeout: 30
+  
+  # Local file settings
+  local:
+    path: "../data/raw/sparcs_data.csv"
+    file_type: "csv"
+  
+  # Azure settings
+  azure:
+    datastore_name: "workspaceblobstore"
+    file_path: "sparcs/data.csv"
+    dataset_name: "sparcs_raw"
+
+preprocessing:
+  # Missing value handling
+  missing_values:
+    strategy: "median"  # Options: mean, median, mode, drop
+    drop_threshold: 0.7  # Drop columns with >70% missing
+  
+  # Outlier handling
+  outliers:
+    method: "iqr"  # Options: iqr, zscore
+    threshold: 1.5
+    columns:
+      - total_costs
+      - total_charges
+      - length_of_stay
+  
+  # Data transformations
+  transformations:
+    log_transform_target: true
+    standardize_text: true
+    remove_duplicates: true
+  
+  # Data filtering
+  filters:
+    min_cost: 0
+    max_cost: 10000000
+    min_length_of_stay: 0
+
+feature_engineering:
+  # Age features
+  age:
+    create_encoded: true
+    create_categories: true
+    categories: ['Low', 'Medium', 'High']
+  
+  # Length of stay features
+  length_of_stay:
+    create_log: true
+    create_categories: true
+    create_cost_per_day: true
+    categories: ['Very Short', 'Short', 'Medium', 'Long', 'Very Long']
+    thresholds: [1, 3, 7, 14]
+  
+  # Severity features
+  severity:
+    encode_severity: true
+    encode_mortality: true
+    create_combined_score: true
+  
+  # Cost features
+  cost:
+    create_log_transform: true
+    create_cost_ratios: true
+
+  # Categorical encoding
+  encoding:
+    method: "onehot"  # Options: onehot, label, target
+    max_categories: 20  # Use label encoding if more categories
+    columns:
+      - age_group
+      - gender
+      - type_of_admission
+      - apr_severity_of_illness_description
+      - apr_risk_of_mortality
+      - apr_medical_surgical_description
+      - payment_typology_1
+
+  # Feature scaling
+  scaling:
+    method: "standard"  # Options: standard, minmax
+    columns:
+      - length_of_stay
+      - total_charges
+
+split:
+  # Train/test split
+  test_size: 0.2
+  random_state: 42
+  stratify: false  # Whether to stratify split
+  
+  # Cross-validation
+  cv_folds: 5
+  cv_strategy: "kfold"  # Options: kfold, stratified, timeseries
+
+target:
+  # Target variable
+  column: "total_costs"
+  transformed_column: "log_total_costs"
+  transform: "log1p"  # Options: log, log1p, sqrt, none
+
+features:
+  # Feature lists
+  numerical:
+    - length_of_stay
+    - total_charges
+    - age_encoded
+    - severity_encoded
+    - mortality_risk_encoded
+  
+  categorical:
+    - age_group
+    - gender
+    - type_of_admission
+    - apr_severity_of_illness_description
+    - apr_risk_of_mortality
+  
+  # Features to drop
+  drop:
+    - patient_id
+    - facility_id
+    - attending_provider_license_number
+    - operating_provider_license_number
+  
+  # Feature selection
+  selection:
+    method: "f_regression"  # Options: f_regression, mutual_info, none
+    k_best: 20  # Number of features to select
+
+validation:
+  # Data validation rules
+  rules:
+    total_costs:
+      min: 0
+      max: 10000000
+      required: true
+    
+    length_of_stay:
+      min: 0
+      max: 365
+      required: true
+    
+    age_group:
+      allowed_values: ['0-17', '18-29', '30-49', '50-69', '70 or Older']
+      required: true
+
+output:
+  # Output paths
+  processed_dir: "../data/processed"
+  train_file: "train.csv"
+  test_file: "test.csv"
+  feature_names_file: "feature_names.txt"
+  
+  # Output format
+  format: "csv"  # Options: csv, parquet, json
+  compression: null  # Options: gzip, bz2, xz, null

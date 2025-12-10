@@ -1,0 +1,280 @@
+# Model Configuration for Hospital Cost Prediction
+
+model:
+  # Model selection
+  algorithm: "BoostedDecisionTreeRegression"  # Primary algorithm
+  alternatives:
+    - "RandomForest"
+    - "XGBoost"
+    - "LightGBM"
+  
+  # Model name and version
+  name: "hospital-cost-predictor"
+  version: "1.0"
+  description: "Boosted Decision Tree model for predicting hospital costs"
+
+# Boosted Decision Tree hyperparameters
+hyperparameters:
+  # Number of boosting stages
+  n_estimators: 200
+  
+  # Learning rate (shrinkage)
+  learning_rate: 0.1
+  
+  # Maximum depth of individual trees
+  max_depth: 7
+  
+  # Minimum samples required to split a node
+  min_samples_split: 2
+  
+  # Minimum samples required at a leaf node
+  min_samples_leaf: 1
+  
+  # Fraction of samples to use for fitting individual trees
+  subsample: 0.8
+  
+  # Loss function
+  loss: "squared_error"  # Options: squared_error, absolute_error, huber, quantile
+  
+  # Maximum features to consider
+  max_features: null  # null means all features
+  
+  # Random state for reproducibility
+  random_state: 42
+  
+  # Validation fraction for early stopping
+  validation_fraction: 0.1
+  
+  # Number of iterations with no improvement to wait before stopping
+  n_iter_no_change: 10
+  
+  # Tolerance for early stopping
+  tol: 0.0001
+  
+  # Verbosity
+  verbose: 1
+
+# Hyperparameter tuning configuration
+hyperparameter_tuning:
+  # Whether to perform tuning
+  enabled: true
+  
+  # Search method
+  method: "random"  # Options: grid, random, bayesian
+  
+  # Number of iterations (for random/bayesian search)
+  n_iter: 50
+  
+  # Cross-validation folds
+  cv_folds: 5
+  
+  # Scoring metric
+  scoring: "r2"  # Options: r2, neg_mean_absolute_error, neg_mean_squared_error
+  
+  # Parameter grid
+  param_grid:
+    n_estimators:
+      - 100
+      - 200
+      - 300
+    
+    learning_rate:
+      - 0.01
+      - 0.05
+      - 0.1
+      - 0.2
+      - 0.3
+    
+    max_depth:
+      - 3
+      - 5
+      - 7
+      - 10
+    
+    min_samples_split:
+      - 2
+      - 5
+      - 10
+    
+    min_samples_leaf:
+      - 1
+      - 2
+      - 4
+    
+    subsample:
+      - 0.7
+      - 0.8
+      - 0.9
+      - 1.0
+  
+  # Parallel jobs
+  n_jobs: -1  # -1 means use all processors
+
+# Training configuration
+training:
+  # Cross-validation
+  cross_validation:
+    enabled: true
+    folds: 5
+    strategy: "kfold"  # Options: kfold, stratified
+    shuffle: true
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 10
+    min_delta: 0.001
+  
+  # Model checkpointing
+  checkpointing:
+    enabled: true
+    save_best_only: true
+    monitor: "val_r2"
+    mode: "max"
+  
+  # Training/validation split (if not using CV)
+  validation_split: 0.2
+  
+  # Random state
+  random_state: 42
+
+# Evaluation metrics
+evaluation:
+  # Primary metric
+  primary_metric: "r2_score"
+  
+  # All metrics to calculate
+  metrics:
+    - "r2_score"
+    - "mean_absolute_error"
+    - "mean_squared_error"
+    - "root_mean_squared_error"
+    - "mean_absolute_percentage_error"
+  
+  # Thresholds for acceptable performance
+  thresholds:
+    min_r2: 0.80
+    max_mae: 0.5  # On log scale
+    max_rmse: 0.8  # On log scale
+    max_mape: 15  # Percentage
+  
+  # Feature importance
+  feature_importance:
+    enabled: true
+    method: "permutation"  # Options: permutation, shap, native
+    top_n: 20
+
+# Model persistence
+persistence:
+  # Model save path
+  model_path: "../models"
+  model_filename: "boosted_tree_model.pkl"
+  
+  # Whether to save metadata
+  save_metadata: true
+  metadata_filename: "model_metadata.json"
+  
+  # Whether to save feature importance
+  save_feature_importance: true
+  feature_importance_filename: "feature_importance.csv"
+  
+  # Compression
+  compress: true
+  compression_level: 3
+
+# Model monitoring
+monitoring:
+  # Performance monitoring
+  performance:
+    enabled: true
+    metrics_to_track:
+      - "r2_score"
+      - "mean_absolute_error"
+      - "rmse"
+    
+    # Alert thresholds
+    alert_threshold:
+      r2_drop: 0.05  # Alert if R² drops by 5%
+      mae_increase: 0.1  # Alert if MAE increases by 10%
+  
+  # Data drift monitoring
+  drift:
+    enabled: true
+    reference_data: "../data/processed/train.csv"
+    features_to_monitor:
+      - "length_of_stay"
+      - "total_charges"
+      - "age_encoded"
+      - "severity_encoded"
+  
+  # Prediction monitoring
+  predictions:
+    enabled: true
+    log_predictions: true
+    log_path: "../logs/predictions.log"
+
+# Deployment configuration
+deployment:
+  # Deployment target
+  target: "azure_ml"  # Options: azure_ml, local, api
+  
+  # Azure ML deployment
+  azure_ml:
+    compute_target: "aks-cluster"
+    instance_type: "Standard_DS2_v2"
+    instance_count: 1
+    
+    # Scoring script
+    scoring_script: "score.py"
+    
+    # Environment
+    environment_name: "hospital-cost-env"
+  
+  # API deployment
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    
+  # Model serving
+  serving:
+    batch_size: 32
+    timeout: 30
+
+# Experiment tracking
+experiment:
+  # Experiment name
+  name: "hospital-cost-prediction"
+  
+  # Tags
+  tags:
+    model_type: "regression"
+    algorithm: "gradient_boosting"
+    domain: "healthcare"
+    dataset: "sparcs"
+  
+  # Logging
+  logging:
+    log_metrics: true
+    log_params: true
+    log_artifacts: true
+    log_model: true
+  
+  # MLflow tracking (optional)
+  mlflow:
+    enabled: false
+    tracking_uri: "http://localhost:5000"
+    experiment_name: "hospital-cost-prediction"
+
+# Reproducibility
+reproducibility:
+  # Random seeds
+  random_state: 42
+  np_random_seed: 42
+  
+  # Deterministic operations
+  deterministic: true
+  
+  # Version tracking
+  track_dependencies: true
+  save_environment: true

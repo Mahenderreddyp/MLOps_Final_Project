@@ -1,0 +1,105 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.venv/
+ENV/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode settings
+.vscode/
+
+# macOS
+.DS_Store
+
+# PyCharm
+.idea/
+
+# Logs
+*.log
+
+# Model artifacts
+*.pkl
+*.joblib
+*.h5
+*.ckpt
+
+# Data artifacts
+/data/
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.parquet
+
+# Secrets & credentials
+.env
+*.key
+*.pem
+
+# Azure ML & cloud
+aml_config/
+.azureml/
+*.azcli
+secrets.json
+
+# Test outputs
+htmlcov/
+.coverage
+coverage.xml
+*.prof
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node/npm
+node_modules/
+
+# Jupyter runtime
+*.jpynb
+
+# Large files, external assets
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# OS/project specific
+Thumbs.db
+ehthumbs.db
+
+# Lint/mypy/misc
+.mypy_cache/
+.pytest_cache/
+.tox/
+.cache/
+*.tmp
+*.swp
+
+# Reports
+reports/
+logs/
+output/
+
+# Local assets
+assets/
+
+# Git LFS pointers (leave actual large files untracked)
+*.lfs
+
+# Test & experiment folders
+old/
+tmp/
+scratch/
+
+# Ignore notebook execution results
+*.nbconvert.ipynb

@@ -1,0 +1,334 @@
+# Pipeline Configuration for Hospital Cost Prediction
+
+pipeline:
+  # Pipeline metadata
+  name: "hospital-cost-prediction-pipeline"
+  version: "1.0"
+  description: "End-to-end ML pipeline for hospital cost prediction"
+  
+  # Pipeline schedule
+  schedule:
+    enabled: false
+    frequency: "weekly"  # Options: daily, weekly, monthly
+    day_of_week: "monday"
+    time: "00:00"
+
+# Azure ML workspace configuration
+workspace:
+  subscription_id: "${AZURE_SUBSCRIPTION_ID}"
+  resource_group: "${AZURE_RESOURCE_GROUP}"
+  workspace_name: "${AZURE_WORKSPACE_NAME}"
+  tenant_id: "${AZURE_TENANT_ID}"
+  
+  # Region
+  location: "eastus"
+
+# Compute configuration
+compute:
+  # Training compute
+  training:
+    name: "cpu-cluster"
+    vm_size: "STANDARD_D3_V2"
+    min_nodes: 0
+    max_nodes: 4
+    idle_seconds_before_scaledown: 300
+  
+  # Inference compute
+  inference:
+    name: "aks-cluster"
+    vm_size: "Standard_DS2_v2"
+    agent_count: 3
+
+# Environment configuration
+environment:
+  name: "hospital-cost-env"
+  version: "1.0"
+  
+  # Base docker image
+  base_image: "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04"
+  
+  # Python version
+  python_version: "3.9"
+  
+  # Conda dependencies
+  conda_dependencies:
+    - python=3.9
+    - pip
+  
+  # Pip dependencies (from requirements.txt)
+  pip_dependencies:
+    - pandas==2.0.3
+    - numpy==1.24.3
+    - scikit-learn==1.3.0
+    - joblib==1.3.1
+    - azureml-core
+    - azureml-dataset-runtime
+
+# Datastore configuration
+datastore:
+  # Default datastore
+  default: "workspaceblobstore"
+  
+  # Input datastore
+  input:
+    name: "workspaceblobstore"
+    container_name: "azureml"
+  
+  # Output datastore
+  output:
+    name: "workspaceblobstore"
+    container_name: "azureml"
+
+# Pipeline steps configuration
+steps:
+  # Step 1: Data ingestion
+  data_ingestion:
+    name: "data_ingestion"
+    script: "data_loader.py"
+    source_directory: "./src/data_processing"
+    arguments:
+      - "--source"
+      - "api"
+      - "--limit"
+      - "50000"
+    outputs:
+      - name: "raw_data"
+        destination: "raw_data"
+    allow_reuse: true
+  
+  # Step 2: Data cleaning
+  data_cleaning:
+    name: "data_cleaning"
+    script: "clean_data.py"
+    source_directory: "./src/data_processing"
+    inputs:
+      - name: "raw_data"
+        source: "data_ingestion"
+    outputs:
+      - name: "cleaned_data"
+        destination: "cleaned_data"
+    allow_reuse: true
+  
+  # Step 3: Feature engineering
+  feature_engineering:
+    name: "feature_engineering"
+    script: "feature_engineering.py"
+    source_directory: "./src/data_processing"
+    inputs:
+      - name: "cleaned_data"
+        source: "data_cleaning"
+    outputs:
+      - name: "engineered_data"
+        destination: "engineered_data"
+    allow_reuse: true
+  
+  # Step 4: Data splitting
+  data_splitting:
+    name: "data_splitting"
+    script: "split_data.py"
+    source_directory: "./src/data_processing"
+    inputs:
+      - name: "engineered_data"
+        source: "feature_engineering"
+    outputs:
+      - name: "train_data"
+        destination: "train_data"
+      - name: "test_data"
+        destination: "test_data"
+    arguments:
+      - "--test-size"
+      - "0.2"
+      - "--random-state"
+      - "42"
+    allow_reuse: true
+  
+  # Step 5: Model training
+  model_training:
+    name: "model_training"
+    script: "train.py"
+    source_directory: "./src/models"
+    inputs:
+      - name: "train_data"
+        source: "data_splitting"
+    outputs:
+      - name: "trained_model"
+        destination: "trained_model"
+      - name: "training_metrics"
+        destination: "training_metrics"
+    arguments:
+      - "--cv-folds"
+      - "5"
+      - "--tune-hyperparameters"
+    allow_reuse: false  # Always retrain
+  
+  # Step 6: Model evaluation
+  model_evaluation:
+    name: "model_evaluation"
+    script: "evaluate.py"
+    source_directory: "./src/models"
+    inputs:
+      - name: "trained_model"
+        source: "model_training"
+      - name: "test_data"
+        source: "data_splitting"
+    outputs:
+      - name: "evaluation_metrics"
+        destination: "evaluation_metrics"
+      - name: "evaluation_report"
+        destination: "evaluation_report"
+    allow_reuse: false
+  
+  # Step 7: Model registration
+  model_registration:
+    name: "model_registration"
+    enabled: true
+    inputs:
+      - name: "trained_model"
+        source: "model_training"
+      - name: "evaluation_metrics"
+        source: "model_evaluation"
+    model_name: "hospital-cost-predictor"
+    model_description: "Boosted Decision Tree model for hospital cost prediction"
+    tags:
+      algorithm: "gradient_boosting"
+      framework: "scikit-learn"
+      domain: "healthcare"
+  
+  # Step 8: Model deployment (optional)
+  model_deployment:
+    name: "model_deployment"
+    enabled: false  # Set to true to enable deployment
+    model_name: "hospital-cost-predictor"
+    deployment_target: "aks"
+    deployment_name: "hospital-cost-service"
+    inference_config:
+      scoring_script: "score.py"
+      environment: "hospital-cost-env"
+    deployment_config:
+      cpu_cores: 1
+      memory_gb: 2
+      instance_count: 3
+
+# Pipeline outputs
+outputs:
+  # Model outputs
+  model:
+    path: "outputs/model"
+    format: "pickle"
+  
+  # Metrics outputs
+  metrics:
+    path: "outputs/metrics"
+    format: "json"
+  
+  # Reports
+  reports:
+    path: "outputs/reports"
+    format: "html"
+
+# Logging and monitoring
+logging:
+  # Log level
+  level: "INFO"
+  
+  # Application Insights
+  app_insights:
+    enabled: false
+    instrumentation_key: "${APP_INSIGHTS_KEY}"
+  
+  # Log Analytics
+  log_analytics:
+    enabled: false
+    workspace_id: "${LOG_ANALYTICS_ID}"
+
+# Notifications
+notifications:
+  # Email notifications
+  email:
+    enabled: false
+    recipients:
+      - "your.email@example.com"
+    events:
+      - "pipeline_completed"
+      - "pipeline_failed"
+      - "model_registered"
+  
+  # Webhook notifications
+  webhook:
+    enabled: false
+    url: "${WEBHOOK_URL}"
+
+# Data versioning
+data_versioning:
+  enabled: true
+  track_inputs: true
+  track_outputs: true
+
+# Model versioning
+model_versioning:
+  enabled: true
+  auto_increment: true
+  tagging_scheme: "semantic"  # Options: semantic, timestamp, auto
+
+# Retry policy
+retry_policy:
+  max_retries: 3
+  timeout: 3600  # seconds
+  backoff_factor: 2
+
+# Security
+security:
+  # Use managed identity
+  use_managed_identity: false
+  
+  # Key vault
+  key_vault:
+    enabled: false
+    name: "${KEY_VAULT_NAME}"
+    
+  # Secrets
+  secrets:
+    - name: "api-key"
+      key_vault_secret: "api-key"
+
+# Cost optimization
+cost_optimization:
+  # Auto-scaling
+  auto_scale: true
+  
+  # Spot instances
+  use_spot_instances: false
+  
+  # Idle shutdown
+  idle_shutdown: true
+  idle_timeout: 300  # seconds
+
+# Experiment tracking
+experiment:
+  name: "hospital-cost-prediction"
+  tags:
+    project: "mlops"
+    model_type: "regression"
+    dataset: "sparcs"
+  
+  # Tracking
+  track_metrics: true
+  track_parameters: true
+  track_artifacts: true
+  track_models: true
+
+# CI/CD integration
+cicd:
+  # Trigger on code changes
+  trigger_on_code_change: true
+  
+  # Trigger on data changes
+  trigger_on_data_change: false
+  
+  # Trigger on schedule
+  trigger_on_schedule: false
+  
+  # Required approvals
+  require_approval: false
+  approvers:
+    - "approver@example.com"
